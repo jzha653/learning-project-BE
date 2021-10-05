@@ -1,20 +1,44 @@
+import {EditTransactionDTO, TransactionListDTO} from './TransactionType';
+
+const transactions: TransactionListDTO = {
+  items: [
+    {
+      transactionId: '132',
+      description: '123',
+      timestamp: 123,
+      value: 1,
+      type: 'expense',
+    },
+  ],
+};
+
 async function getAllTransactions() {
-  return [
-    {id: 1, amount: 10},
-    {id: 2, amount: 123},
-  ];
+  return transactions;
 }
 
-async function createTransaction(userName: string, password: string) {
-  return 'Sign up: username: ' + userName + ' password: ' + password;
+async function createTransaction(transaction: EditTransactionDTO) {
+  return transaction;
 }
 
-async function logIn(userName: string, password: string) {
-  return 'Log in: username: ' + userName + ' password: ' + password;
+async function getTransactionById(transactionId: string) {
+  //try catch here
+  return 'Transaction Fond: ' + transactionId;
+}
+
+async function updateTransaction(transactionId: string) {
+  //try catch here
+  return 'Transaction Update: ' + transactionId;
+}
+
+async function deleteTransaction(transactionId: string) {
+  //try catch here
+  return 'Transaction Delete: ' + transactionId;
 }
 
 module.exports = {
   getAllTransactions,
-  signUp,
-  update,
+  createTransaction,
+  getTransactionById,
+  updateTransaction,
+  deleteTransaction,
 };
