@@ -1,7 +1,8 @@
-import express = require('express');
+import express from 'express';
+import userRouter from './User/router';
+import transactionRouter from './Transaction/router';
+
 const app = express();
-const userRouter = require('./User/UserRouter');
 app.use('/user', userRouter);
-const transactionRouter = require('./Transaction/TransactionRouter');
 app.use('/transaction', transactionRouter);
 module.exports = {app};

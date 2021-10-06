@@ -1,3 +1,5 @@
+import {Request} from 'express';
+
 export interface UserDTO {
   name: string;
   email: string;
@@ -12,4 +14,14 @@ export interface UserSignupDTO extends UserLoginDTO {
 }
 export interface UserUpdateDTO {
   name: string;
+}
+
+export interface UserTokenBody {
+  url: string; // The URL of your service
+  userId: string; // The UID of the user in your system
+  scope: string;
+}
+
+export interface CustomRequest<T> extends Request {
+  body: T;
 }
