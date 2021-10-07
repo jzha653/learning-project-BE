@@ -1,5 +1,11 @@
 import DB from '../lib/database';
-import {UserDTO, UserLoginDTO, UserSignupDTO, UserUpdateDTO} from './type';
+import {
+  UserDTO,
+  UserLoginDTO,
+  UserSignupDTO,
+  UserUpdateDTO,
+  UserWithPassword,
+} from './type';
 import jwt from 'jsonwebtoken';
 import passwordHash from 'password-hash';
 import {APIError} from '../lib/api-error';
@@ -8,7 +14,7 @@ const userRef = DB.collection('users');
 const token_phrase =
   'OcGsWVzTcA5QVaf1HkdrlYVPzPprZxG8h21tbbwkThCSuomHNUEAQyIRHx1GyXvWZj8BxMCiUwbeg3RtiyjgeE5aDV8wF5Bthljr';
 
-function generateToken(userId: string) {
+function generateToken(userId: string): string {
   const claims = {
     url: 'https://us-central1-civic-matrix-327921.cloudfunctions.net/app/', // The URL of your service
     userId: userId, // The UID of the user in your system
@@ -26,8 +32,16 @@ function getUserId(token?: string): string | null {
   if (!token.startsWith('Bearer')) {
     throw new APIError(400, 'Please provide bearer token');
   }
+
   const result = jwt.verify(token.substring(7), token_phrase);
-  return (result as {userId: string}).userId;
+
+  const userId = (result as {userId: string}).userId;
+
+  if (!userId) {
+    throw new APIError(401, 'Invalid token');
+  }
+
+  return userId;
 }
 
 async function signUp(user: UserSignupDTO): Promise<UserDTO> {
@@ -53,43 +67,40 @@ async function signUp(user: UserSignupDTO): Promise<UserDTO> {
   // patch database transactions
   const newUserRef = await userRef.add(userToSignUp);
   const userToken = generateToken(newUserRef.id);
-  //update token
-  if (await updateUserDetails(newUserRef.id, {token: userToken})) {
-    const userObj: UserDTO = {...userToSignUp, token: userToken};
-    // return user object
-    return userObj;
-  } else {
-    throw new APIError(502, 'FAILED ADD TOKEN');
-  }
+  // return user object, TODO:: remove password, update user details directly
+  return await updateUserDetails(newUserRef.id, {token: userToken});
 }
 
-async function logIn(userToLogIn: UserLoginDTO) {
-  try {
-    if (!userToLogIn.email) {
-      throw new APIError(400, 'NO EMAIL');
-    }
+async function logIn(userToLogIn: UserLoginDTO): Promise<UserDTO> {
+  if (!userToLogIn.email) {
+    throw new APIError(400, 'NO EMAIL');
+  }
 
-    if (!userToLogIn.password) {
-      throw new APIError(400, 'NO PASSWORD');
-    }
+  if (!userToLogIn.password) {
+    throw new APIError(400, 'NO PASSWORD');
+  }
 
-    const currentUser = await getUserFromEmail(userToLogIn.email);
+  const currentUser = await getUserFromEmail(userToLogIn.email);
 
-    if (currentUser) {
-      if (passwordHash.verify(userToLogIn.password, currentUser.password)) {
-        return currentUser;
-      } else {
-        throw new APIError(409, 'Password not match');
-      }
+  if (currentUser) {
+    if (passwordHash.verify(userToLogIn.password, currentUser.password)) {
+      return {
+        name: currentUser.name,
+        token: currentUser.token,
+        email: currentUser.email,
+      };
     } else {
-      throw new APIError(401, 'Please Sign Up first');
+      throw new APIError(409, 'Password not match');
     }
-  } catch (error) {
-    throw new APIError(503, 'DB Error');
+  } else {
+    throw new APIError(401, 'Please Sign Up first');
   }
 }
 
-async function update(userNameObj: UserUpdateDTO, authToken?: string) {
+async function update(
+  userNameObj: UserUpdateDTO,
+  authToken?: string
+): Promise<UserDTO> {
   const userId = getUserId(authToken);
   if (!userId) {
     throw new APIError(401, 'Invalid token');
@@ -98,30 +109,42 @@ async function update(userNameObj: UserUpdateDTO, authToken?: string) {
   if (!updatedUser) {
     throw new APIError(500, 'Failed update');
   }
-  return updatedUser.data();
+  return updatedUser;
 }
 
-async function updateUserDetails(userId: string, newKeyValuePair: object) {
-  try {
-    await userRef.doc(userId).update(newKeyValuePair);
-    return await userRef.doc(userId).get();
-  } catch (error) {
-    return false;
+//return type
+async function updateUserDetails(
+  userId: string,
+  newKeyValuePair: object
+): Promise<UserDTO> {
+  await userRef.doc(userId).update(newKeyValuePair);
+  const user = (await userRef.doc(userId).get()).data();
+  if (!user) {
+    throw new APIError(404, 'User not found');
   }
+  return {
+    name: user.name,
+    email: user.email,
+    token: user.token,
+  };
 }
 
-async function getUserFromEmail(email: string) {
-  try {
-    // query firestore, load all users with specified email
-    const userWithEmail = await userRef.where('email', '==', email);
-    const usersMatchEmail = await userWithEmail.get();
-    if (usersMatchEmail.size > 0) {
-      return usersMatchEmail.docs[0].data();
-    }
-    return null;
-  } catch (error) {
-    return null;
+async function getUserFromEmail(
+  email: string
+): Promise<UserWithPassword | undefined> {
+  const usersWithEmailSnapshot = await userRef
+    .where('email', '==', email)
+    .get();
+  if (usersWithEmailSnapshot.size > 0) {
+    const result = usersWithEmailSnapshot.docs[0].data();
+    return {
+      name: result.name,
+      email: result.email,
+      token: result.token,
+      password: result.password,
+    };
   }
+  return undefined;
 }
 
 const userModel = {logIn, signUp, update, getUserId};

@@ -1,10 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.APIError = void 0;
-class APIError {
-    constructor(errorCode, errorMessage) {
+class APIError extends Error {
+    constructor(errorCode = 500, errorMessage) {
+        super(errorMessage);
         this.errorCode = errorCode;
-        this.errorMessage = errorMessage;
     }
 }
 exports.APIError = APIError;

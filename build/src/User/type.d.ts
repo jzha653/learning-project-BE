@@ -14,6 +14,9 @@ export interface UserSignupDTO extends UserLoginDTO {
 export interface UserUpdateDTO {
     name: string;
 }
+export interface UserWithPassword extends UserDTO {
+    password: string;
+}
 export interface UserTokenBody {
     url: string;
     userId: string;

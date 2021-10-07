@@ -26,7 +26,11 @@ function getUserId(token) {
         throw new api_error_1.APIError(400, 'Please provide bearer token');
     }
     const result = jsonwebtoken_1.default.verify(token.substring(7), token_phrase);
-    return result.userId;
+    const userId = result.userId;
+    if (!userId) {
+        throw new api_error_1.APIError(401, 'Invalid token');
+    }
+    return userId;
 }
 async function signUp(user) {
     if (!user.password) {
@@ -49,39 +53,31 @@ async function signUp(user) {
     // patch database transactions
     const newUserRef = await userRef.add(userToSignUp);
     const userToken = generateToken(newUserRef.id);
-    //update token
-    if (await updateUserDetails(newUserRef.id, { token: userToken })) {
-        const userObj = { ...userToSignUp, token: userToken };
-        // return user object
-        return userObj;
-    }
-    else {
-        throw new api_error_1.APIError(502, 'FAILED ADD TOKEN');
-    }
+    // return user object, TODO:: remove password, update user details directly
+    return await updateUserDetails(newUserRef.id, { token: userToken });
 }
 async function logIn(userToLogIn) {
-    try {
-        if (!userToLogIn.email) {
-            throw new api_error_1.APIError(400, 'NO EMAIL');
-        }
-        if (!userToLogIn.password) {
-            throw new api_error_1.APIError(400, 'NO PASSWORD');
-        }
-        const currentUser = await getUserFromEmail(userToLogIn.email);
-        if (currentUser) {
-            if (password_hash_1.default.verify(userToLogIn.password, currentUser.password)) {
-                return currentUser;
-            }
-            else {
-                throw new api_error_1.APIError(409, 'Password not match');
-            }
+    if (!userToLogIn.email) {
+        throw new api_error_1.APIError(400, 'NO EMAIL');
+    }
+    if (!userToLogIn.password) {
+        throw new api_error_1.APIError(400, 'NO PASSWORD');
+    }
+    const currentUser = await getUserFromEmail(userToLogIn.email);
+    if (currentUser) {
+        if (password_hash_1.default.verify(userToLogIn.password, currentUser.password)) {
+            return {
+                name: currentUser.name,
+                token: currentUser.token,
+                email: currentUser.email,
+            };
         }
         else {
-            throw new api_error_1.APIError(401, 'Please Sign Up first');
+            throw new api_error_1.APIError(409, 'Password not match');
         }
     }
-    catch (error) {
-        throw new api_error_1.APIError(503, 'DB Error');
+    else {
+        throw new api_error_1.APIError(401, 'Please Sign Up first');
     }
 }
 async function update(userNameObj, authToken) {
@@ -93,30 +89,35 @@ async function update(userNameObj, authToken) {
     if (!updatedUser) {
         throw new api_error_1.APIError(500, 'Failed update');
     }
-    return updatedUser.data();
+    return updatedUser;
 }
+//return type
 async function updateUserDetails(userId, newKeyValuePair) {
-    try {
-        await userRef.doc(userId).update(newKeyValuePair);
-        return await userRef.doc(userId).get();
+    await userRef.doc(userId).update(newKeyValuePair);
+    const user = (await userRef.doc(userId).get()).data();
+    if (!user) {
+        throw new api_error_1.APIError(404, 'User not found');
     }
-    catch (error) {
-        return false;
-    }
+    return {
+        name: user.name,
+        email: user.email,
+        token: user.token,
+    };
 }
 async function getUserFromEmail(email) {
-    try {
-        // query firestore, load all users with specified email
-        const userWithEmail = await userRef.where('email', '==', email);
-        const usersMatchEmail = await userWithEmail.get();
-        if (usersMatchEmail.size > 0) {
-            return usersMatchEmail.docs[0].data();
-        }
-        return null;
+    const usersWithEmailSnapshot = await userRef
+        .where('email', '==', email)
+        .get();
+    if (usersWithEmailSnapshot.size > 0) {
+        const result = usersWithEmailSnapshot.docs[0].data();
+        return {
+            name: result.name,
+            email: result.email,
+            token: result.token,
+            password: result.password,
+        };
     }
-    catch (error) {
-        return null;
-    }
+    return undefined;
 }
 const userModel = { logIn, signUp, update, getUserId };
 exports.default = userModel;

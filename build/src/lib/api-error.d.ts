@@ -1,5 +1,4 @@
-export declare class APIError {
+export declare class APIError extends Error {
     errorCode: number;
-    errorMessage: string;
-    constructor(errorCode: number, errorMessage: string);
+    constructor(errorCode: number | undefined, errorMessage: string);
 }

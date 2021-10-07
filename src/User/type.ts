@@ -16,6 +16,10 @@ export interface UserUpdateDTO {
   name: string;
 }
 
+export interface UserWithPassword extends UserDTO {
+  password: string;
+}
+
 export interface UserTokenBody {
   url: string; // The URL of your service
   userId: string; // The UID of the user in your system

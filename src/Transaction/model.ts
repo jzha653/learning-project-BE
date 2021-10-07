@@ -4,13 +4,6 @@ import userModel from '../User/model';
 import {APIError} from '../lib/api-error';
 const transactionRef = DB.collection('transactions');
 
-function checkAuth(authToken?: string) {
-  const userId = userModel.getUserId(authToken);
-  if (!userId) {
-    throw new APIError(401, 'Invalid token');
-  }
-}
-
 function validateTransactionInput(transaction: EditTransactionDTO) {
   if (transaction.type !== 'expense' && transaction.type !== 'income') {
     throw new APIError(422, 'Invalid transaction type');
@@ -29,10 +22,26 @@ function validateTransactionInput(transaction: EditTransactionDTO) {
 async function getAllTransactions(
   authToken?: string
 ): Promise<TransactionListDTO> {
-  checkAuth(authToken);
-  const allTransactions = await transactionRef.get();
+  const userId = userModel.getUserId(authToken);
+  // checkAuth(authToken); remove userid from payload, add userId to database to filter
+  const snapshot = await transactionRef
+    .where('userId', '==', userId)
+    .orderBy('timestamp', 'desc')
+    .get();
+  const result: TransactionDTO[] = [];
+  snapshot.forEach(doc => {
+    const t: TransactionDTO = doc.data() as TransactionDTO;
+    result.push({
+      transactionId: t.transactionId,
+      timestamp: t.timestamp,
+      description: t.description,
+      type: t.type,
+      value: t.value,
+    });
+  });
+  //preprocess, return type specify type in variable name
   return {
-    items: allTransactions.docs.map(doc => doc.data()) as TransactionDTO[],
+    items: result,
   };
 }
 
@@ -40,68 +49,61 @@ async function createTransaction(
   transaction: EditTransactionDTO,
   authToken?: string
 ): Promise<TransactionListDTO> {
-  checkAuth(authToken);
+  const userId = userModel.getUserId(authToken);
   validateTransactionInput(transaction);
-  try {
-    const newTransaction = await transactionRef.add(transaction);
-    try {
-      await transactionRef
-        .doc(newTransaction.id)
-        .update({transactionId: newTransaction.id});
-      return getAllTransactions(authToken);
-    } catch (error) {
-      throw new APIError(500, 'DB error');
-    }
-  } catch (error) {
-    throw new APIError(500, 'DB error');
-  }
+
+  const newTransaction = await transactionRef.add({...transaction, userId});
+
+  await transactionRef
+    .doc(newTransaction.id)
+    .update({transactionId: newTransaction.id});
+
+  return getAllTransactions(authToken);
 }
 
-async function getTransactionById(transactionId: string, authToken?: string) {
-  checkAuth(authToken);
-  if (!transactionId) {
-    throw new APIError(400, 'No Transaction Id Found');
+async function getTransactionById(
+  transactionId: string,
+  authToken?: string
+): Promise<TransactionDTO> {
+  //check user id here
+  const userId = userModel.getUserId(authToken);
+  const currentTransaction = (
+    await transactionRef.doc(transactionId).get()
+  ).data();
+  if (currentTransaction && currentTransaction.userId !== userId) {
+    throw new APIError(401, 'Unauthorised');
   }
-  try {
-    const currentTransaction = (
-      await transactionRef.doc(transactionId).get()
-    ).data();
-    return currentTransaction;
-  } catch (error) {
-    throw new APIError(404, 'Not Found');
-  }
+  return currentTransaction as TransactionDTO;
 }
 
 async function updateTransaction(
   transaction: EditTransactionDTO,
-  authToken?: string,
-  transactionId?: string
-) {
-  checkAuth(authToken);
+  transactionId: string,
+  authToken?: string
+): Promise<TransactionListDTO> {
+  const userId = userModel.getUserId(authToken);
   validateTransactionInput(transaction);
-
-  if (!transactionId) {
-    throw new APIError(400, 'No Transaction Id Found');
+  if (
+    (await transactionRef.doc(transactionId).get()).data()?.userId !== userId
+  ) {
+    throw new APIError(401, 'Unauthorised');
   }
-  try {
-    await transactionRef.doc(transactionId).update(transaction);
-    return getAllTransactions(authToken);
-  } catch (error) {
-    throw new APIError(404, 'Not Found');
-  }
+  await transactionRef.doc(transactionId).update(transaction);
+  return getAllTransactions(authToken);
 }
 
-async function deleteTransaction(transactionId: string, authToken?: string) {
-  checkAuth(authToken);
-  if (!transactionId) {
-    throw new APIError(400, 'No Transaction Id Found');
+async function deleteTransaction(
+  transactionId: string,
+  authToken?: string
+): Promise<TransactionListDTO> {
+  const userId = userModel.getUserId(authToken);
+  if (
+    (await transactionRef.doc(transactionId).get()).data()?.userId !== userId
+  ) {
+    throw new APIError(401, 'Unauthorised');
   }
-  try {
-    await transactionRef.doc(transactionId).delete();
-    return getAllTransactions(authToken);
-  } catch (error) {
-    throw new APIError(404, 'Not Found');
-  }
+  await transactionRef.doc(transactionId).delete();
+  return getAllTransactions(authToken);
 }
 
 const transactionModel = {

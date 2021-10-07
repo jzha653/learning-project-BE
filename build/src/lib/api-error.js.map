@@ -1,1 +1,1 @@
-{"version":3,"file":"api-error.js","sourceRoot":"","sources":["../../../src/lib/api-error.ts"],"names":[],"mappings":";;;AAAA,MAAa,QAAQ;IAGnB,YAAY,SAAiB,EAAE,YAAoB;QACjD,IAAI,CAAC,SAAS,GAAG,SAAS,CAAC;QAC3B,IAAI,CAAC,YAAY,GAAG,YAAY,CAAC;IACnC,CAAC;CACF;AAPD,4BAOC"}
+{"version":3,"file":"api-error.js","sourceRoot":"","sources":["../../../src/lib/api-error.ts"],"names":[],"mappings":";;;AAAA,MAAa,QAAS,SAAQ,KAAK;IAEjC,YAAY,SAAS,GAAG,GAAG,EAAE,YAAoB;QAC/C,KAAK,CAAC,YAAY,CAAC,CAAC;QACpB,IAAI,CAAC,SAAS,GAAG,SAAS,CAAC;IAC7B,CAAC;CACF;AAND,4BAMC"}

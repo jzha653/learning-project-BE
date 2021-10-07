@@ -12,9 +12,9 @@ userRouter.post('/signup', async (req: CustomRequest<UserSignupDTO>, res) => {
     res.status(201).send(response);
   } catch (error) {
     if (error instanceof APIError) {
-      res.status(error.errorCode).send(error.errorMessage);
+      res.status(error.errorCode).send(error.message);
     } else {
-      res.status(500).send(error ?? 'Internal Server Error');
+      res.status(500).send((error as Error).message ?? 'Internal Server Error');
     }
   }
 });
@@ -25,9 +25,9 @@ userRouter.post('/login', async (req: CustomRequest<UserLoginDTO>, res) => {
     res.status(200).send(response);
   } catch (error) {
     if (error instanceof APIError) {
-      res.status(error.errorCode).send(error.errorMessage);
+      res.status(error.errorCode).send(error.message);
     } else {
-      res.status(500).send(error ?? 'Internal Server Error');
+      res.status(500).send((error as Error).message ?? 'Internal Server Error');
     }
   }
 });
@@ -41,9 +41,9 @@ userRouter.post('/update', async (req, res) => {
     res.status(200).send(response);
   } catch (error) {
     if (error instanceof APIError) {
-      res.status(error.errorCode).send(error.errorMessage);
+      res.status(error.errorCode).send(error.message);
     } else {
-      res.status(500).send(error ?? 'Internal Server Error');
+      res.status(500).send((error as Error).message ?? 'Internal Server Error');
     }
   }
 });

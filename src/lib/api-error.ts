@@ -1,8 +1,7 @@
-export class APIError {
-  errorCode: number;
-  errorMessage: string;
-  constructor(errorCode: number, errorMessage: string) {
+export class APIError extends Error {
+  public errorCode: number;
+  constructor(errorCode = 500, errorMessage: string) {
+    super(errorMessage);
     this.errorCode = errorCode;
-    this.errorMessage = errorMessage;
   }
 }
