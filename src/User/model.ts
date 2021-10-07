@@ -105,6 +105,9 @@ async function update(
   if (!userId) {
     throw new APIError(401, 'Invalid token');
   }
+  if (!userNameObj?.name) {
+    throw new APIError(400, 'No name');
+  }
   const updatedUser = await updateUserDetails(userId, userNameObj);
   if (!updatedUser) {
     throw new APIError(500, 'Failed update');
